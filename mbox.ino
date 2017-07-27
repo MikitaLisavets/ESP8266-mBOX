@@ -4,9 +4,11 @@
 #include <LiquidCrystal_PCF8574.h>
 #include <Keypad.h>
 
-const char* ssid     = "Buzzghetti";
-const char* password = "spaghetti";
-const String url     = "http://mbox-backend.herokuapp.com/api/weather";
+LiquidCrystal_PCF8574 lcd(0x27);
+
+const char* SSID     = "ssid";
+const char* PASSWORD = "password";
+const String URL     = "URL";
 
 const byte ROWS = 4;
 const byte COLS = 4;
@@ -18,19 +20,14 @@ char hexaKeys[ROWS][COLS] = {
   {'2','6','A','E'},
   {'3','7','B','F'}
 };
-
-LiquidCrystal_PCF8574 lcd(0x27);
 Keypad kpad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
 
 unsigned long lastConnectionTime = 0;
 unsigned long postingInterval = 0;
-
-String httpData;
-
 struct Weather {
   unsigned int test;
 };
-
+String httpData;
 Weather weather;
 
 void setup() {
