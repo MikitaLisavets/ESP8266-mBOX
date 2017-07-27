@@ -45,6 +45,8 @@ void setup() {
   Serial.println("\nWiFi connected\nIP address: ");
   Serial.println(WiFi.localIP());
   Serial.println();
+  lcd.begin(16, 2);
+  lcd.setBacklight(255);
 }
 
 void loop() {
