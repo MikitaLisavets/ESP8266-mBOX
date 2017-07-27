@@ -110,3 +110,8 @@ bool parseData() {
   httpData = "";
   return true;
 }
+
+
+int menu() {
+  lcd.clear();
+}
