@@ -79,11 +79,19 @@ void reconnect() {
 }
 
 int getMenuOption() {
+  char pressedKey;
+  int selectedMenuOption;
+
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Loading...");
+
+  JsonObject& menu = fetch(URL + "/menu");
   
-  JsonObject& menu = fetch(URL + "/menu"); 
+  while(pressedKey != '5') {
+    customKey = kpad.getKey();
+  }
+  return selectedMenuOption;
 }
 
 JsonObject& fetch(string url) {
