@@ -31,20 +31,11 @@ String httpData;
 Weather weather;
 
 void setup() {
-  Serial.begin(115200);
-  Serial.print("\nConnecting to ");
-  Serial.println(ssid);
-
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
   }
-
-  Serial.println("\nWiFi connected\nIP address: ");
-  Serial.println(WiFi.localIP());
-  Serial.println();
   lcd.begin(16, 2);
   lcd.setBacklight(255);
 }
@@ -54,9 +45,7 @@ void loop() {
     if (millis() < lastConnectionTime) lastConnectionTime = 0;
     if (millis() - lastConnectionTime > postingInterval or lastConnectionTime == 0) {
       if (httpRequest() and parseData()) {
-        Serial.println("\nWeather");
-        Serial.printf("test: %d\n", weather.test);
-        Serial.println();
+
       }
     }
   }
@@ -70,23 +59,31 @@ void loop() {
 }
 
 
+int menu() {
+  lcd.clear();
+}
+
+
+
 bool httpRequest() {
   HTTPClient client;
   bool find = false;
   //client.setTimeout(1000);
-  Serial.print("Connecting ");
+
   client.begin(url);
   int httpCode = client.GET();
 
   if (httpCode > 0) {
-    Serial.printf("successfully, code: %d\n", httpCode);
+
     if (httpCode == HTTP_CODE_OK) {
       httpData = client.getString();
       lastConnectionTime = millis();
       find = true;
     }
   }
-  else Serial.printf("failed, error: %s\n", client.errorToString(httpCode).c_str());
+  else {
+    
+  }
 
   postingInterval = find ? 600L * 1000L : 60L * 1000L;
   client.end();
@@ -95,13 +92,12 @@ bool httpRequest() {
 }
 
 bool parseData() {
-  Serial.println(httpData);
 
   DynamicJsonBuffer jsonBuffer;
   JsonObject& root = jsonBuffer.parseObject(httpData);
 
   if (!root.success()) {
-    Serial.println("Json parsing failed!");
+
     return false;
   }
 
@@ -109,9 +105,4 @@ bool parseData() {
 
   httpData = "";
   return true;
-}
-
-
-int menu() {
-  lcd.clear();
 }
