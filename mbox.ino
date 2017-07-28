@@ -8,7 +8,7 @@ LiquidCrystal_PCF8574 lcd(0x27);
 
 const char* SSID     = "ssid";
 const char* PASSWORD = "password";
-const String URL     = "URL";
+const string URL     = "URL";
 
 const byte ROWS = 4;
 const byte COLS = 4;
@@ -21,14 +21,6 @@ char hexaKeys[ROWS][COLS] = {
   {'3','7','B','F'}
 };
 Keypad kpad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
-
-unsigned long lastConnectionTime = 0;
-unsigned long postingInterval = 0;
-struct Weather {
-  unsigned int test;
-};
-String httpData;
-Weather weather;
 
 void setup() {
   WiFi.begin(ssid, password);
@@ -66,9 +58,9 @@ int menu() {
   
 }
 
-String httpRequest(String url) {
+String httpRequest(string url) {
   HTTPClient client;
-  String data;
+  string data;
   client.begin(url);
   int httpCode = client.GET();
 
@@ -88,18 +80,15 @@ String httpRequest(String url) {
   return data;
 }
 
-bool parseData() {
-
+JsonObject& parseData(string data) {
   DynamicJsonBuffer jsonBuffer;
-  JsonObject& root = jsonBuffer.parseObject(httpData);
-
+  JsonObject& root = jsonBuffer.parseObject(data);
   if (!root.success()) {
-
-    return false;
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Error:");
+    lcd.setCursor(0, 1);
+    lcd.print("Parse JSON");
   }
-
-  weather.test = root["test"];
-
-  httpData = "";
-  return true;
+  return root;
 }
