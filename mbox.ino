@@ -61,34 +61,31 @@ void loop() {
 
 int menu() {
   lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Loading...");
+  
 }
 
-
-
-bool httpRequest() {
+String httpRequest(String url) {
   HTTPClient client;
-  bool find = false;
-  //client.setTimeout(1000);
-
+  String data;
   client.begin(url);
   int httpCode = client.GET();
 
   if (httpCode > 0) {
-
     if (httpCode == HTTP_CODE_OK) {
-      httpData = client.getString();
-      lastConnectionTime = millis();
-      find = true;
+      data = client.getString();
     }
-  }
-  else {
-    
+  } else {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Error:");
+    lcd.setCursor(0, 1);
+    lcd.print(client.errorToString(httpCode).c_str());
   }
 
-  postingInterval = find ? 600L * 1000L : 60L * 1000L;
   client.end();
-
-  return find;
+  return data;
 }
 
 bool parseData() {
