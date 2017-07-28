@@ -20,27 +20,36 @@ char hexaKeys[ROWS][COLS] = {
   {'2','6','A','E'},
   {'3','7','B','F'}
 };
-Keypad kpad = Keypad( makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+Keypad kpad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
 
 void setup() {
+  lcd.begin(16, 2);
+  lcd.setBacklight(255);
+  
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Connecting to");
+  lcd.setCursor(0, 1);
+  lcd.print(ssid);
+  
   WiFi.begin(ssid, password);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
+    lcd.print('.');
   }
-  lcd.begin(16, 2);
-  lcd.setBacklight(255);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Connected");
 }
 
 void loop() {
-  if (WiFi.status() == WL_CONNECTED) {
-    if (millis() < lastConnectionTime) lastConnectionTime = 0;
-    if (millis() - lastConnectionTime > postingInterval or lastConnectionTime == 0) {
-      if (httpRequest() and parseData()) {
-
-      }
-    }
+  int currentMenuOption;
+  if (WiFi.status() != WL_CONNECTED) {
+    reconnect();
   }
+  currentMenuOption = getMenuOption();
+
   
 //  char customKey = kpad.getKey();
 //  if (customKey){
@@ -50,15 +59,40 @@ void loop() {
 //  }
 }
 
+void reconnect() {
+  lcd.clear();
+  lcd.setCursor(0, 0)
+  lcd.print("Reconnecting to");
+  lcd.setCursor(0, 1);
+  lcd.print(ssid);
+  
+  WiFi.begin(ssid, password);
 
-int menu() {
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    lcd.print('.');
+  }
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Reconnected");
+}
+
+int getMenuOption() {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Loading...");
   
+  JsonObject& menu = fetch(URL + "/menu"); 
 }
 
-String httpRequest(string url) {
+JsonObject& fetch(string url) {
+  string data = httpRequest(url);
+  return parseData(data);
+}
+
+
+string httpRequest(string url) {
   HTTPClient client;
   string data;
   client.begin(url);
