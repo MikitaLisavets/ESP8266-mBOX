@@ -7,8 +7,8 @@
 
 LiquidCrystal_PCF8574 lcd(0x27);
 
-const char* SSID     = "ssid";
-const char* PASSWORD = "password";
+const char* SSID     = "Buzzghetti";
+const char* PASSWORD = "spaghetti";
 const String URL     = "http://mbox-backend.herokuapp.com/api/";
 
 const byte ROWS = 4;
@@ -37,6 +37,7 @@ void loop() {
 
 void loadProgram(String menuItem) {
   char pressedKey;
+  String key;
   unsigned long startTime;
   int refreshTime = 600;
   int scrollTime = 300;
@@ -46,12 +47,7 @@ void loadProgram(String menuItem) {
   lcd.print("Loading...");
 
   while(1) {
-    startTime = millis();
-    while(millis() - startTime < 100) {
-      pressedKey = pressedKey || kpad.getKey();
-      delay(10);
-    }
-    JsonObject& menu = fetch(URL + menuItem + "?key=" + String(pressedKey)); 
+    JsonObject& menu = fetch(URL + menuItem + "?key=" + key); 
 
     String lineOne = menu["lineOne"];
     String lineTwo = menu["lineTwo"];
@@ -70,26 +66,33 @@ void loadProgram(String menuItem) {
         startTime = millis();
         while(millis() - startTime < scrollTime) {
           pressedKey = kpad.getKey();
-          if (pressedKey == '*') return;
-          if (pressedKey == 'A') {
-            refreshTime += timeOffset;
-            lcd.setCursor(0, 0);
-            lcd.print("[+ update speed]");
-          }
-          if (pressedKey == 'B') {
-            refreshTime -= timeOffset;
-            lcd.setCursor(0, 0);
-            lcd.print("[- update speed]");
-          }
-          if (pressedKey == 'C') {
-            scrollTime += timeOffset;
-            lcd.setCursor(0, 1);
-            lcd.print("[+ scroll speed]");
-          }
-          if (pressedKey == 'D') {
-            scrollTime -= timeOffset;
-            lcd.setCursor(0, 1);
-            lcd.print("[- scroll speed]");
+          if (pressedKey) {
+            switch(pressedKey) {
+              case '*':
+                return;
+            case 'A':
+              refreshTime += timeOffset;
+              lcd.setCursor(0, 0);
+              lcd.print("[+ " + String(refreshTime) + " update]");
+              break;
+            case 'B':
+              refreshTime -= timeOffset;
+              lcd.setCursor(0, 0);
+              lcd.print("[- " + String(refreshTime) + " update]");
+              break;
+            case 'C': 
+              scrollTime += timeOffset;
+              lcd.setCursor(0, 1);
+              lcd.print("[+ " + String(scrollTime) + " scroll]");
+              break;
+             case 'D':
+              scrollTime -= timeOffset;
+              lcd.setCursor(0, 1);
+              lcd.print("[- " + String(scrollTime) + " scroll]");
+              break;
+              default:
+                key = pressedKey;
+            }            
           }
           delay(10);
         }
@@ -102,26 +105,33 @@ void loadProgram(String menuItem) {
     startTime = millis();
     while(millis() - startTime < refreshTime) {
       pressedKey = kpad.getKey();
-      if (pressedKey == '*') return;
-      if (pressedKey == 'A') {
-        refreshTime += timeOffset;
-        lcd.setCursor(0, 0);
-        lcd.print("[+]");
-      }
-      if (pressedKey == 'B') {
-        refreshTime -= timeOffset;
-        lcd.setCursor(0, 1);
-        lcd.print("[-]");
-      }
-      if (pressedKey == 'C') {
-        scrollTime += timeOffset;
-        lcd.setCursor(0, 0);
-        lcd.print("[+]");
-      }
-      if (pressedKey == 'D') {
-        scrollTime -= timeOffset;
-        lcd.setCursor(0, 1);
-        lcd.print("[-]");
+      if (pressedKey) {
+        switch(pressedKey) {
+          case '*':
+            return;
+          case 'A':
+            refreshTime += timeOffset;
+            lcd.setCursor(0, 0);
+            lcd.print("[+ " + String(refreshTime) + " update]");
+            break;
+          case 'B':
+            refreshTime -= timeOffset;
+            lcd.setCursor(0, 0);
+            lcd.print("[- " + String(refreshTime) + " update]");
+            break;
+          case 'C': 
+            scrollTime += timeOffset;
+            lcd.setCursor(0, 1);
+            lcd.print("[+ " + String(scrollTime) + " scroll]");
+            break;
+           case 'D':
+            scrollTime -= timeOffset;
+            lcd.setCursor(0, 1);
+            lcd.print("[- " + String(scrollTime) + " scroll]");
+            break;
+          default:
+            key = pressedKey;
+        }                
       }
       delay(10);
     }
