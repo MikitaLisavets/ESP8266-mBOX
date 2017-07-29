@@ -46,7 +46,11 @@ void loadProgram(String menuItem) {
   lcd.print("Loading...");
 
   while(1) {
-    pressedKey = kpad.getKey();
+    startTime = millis();
+    while(millis() - startTime < 100) {
+      pressedKey = pressedKey || kpad.getKey();
+      delay(10);
+    }
     JsonObject& menu = fetch(URL + menuItem + "?key=" + String(pressedKey)); 
 
     String lineOne = menu["lineOne"];
@@ -70,12 +74,12 @@ void loadProgram(String menuItem) {
           if (pressedKey == 'A') {
             refreshTime += timeOffset;
             lcd.setCursor(0, 0);
-            lcd.print("[+ request speed]");
+            lcd.print("[+ update speed]");
           }
           if (pressedKey == 'B') {
             refreshTime -= timeOffset;
             lcd.setCursor(0, 0);
-            lcd.print("[- request speed]");
+            lcd.print("[- update speed]");
           }
           if (pressedKey == 'C') {
             scrollTime += timeOffset;
