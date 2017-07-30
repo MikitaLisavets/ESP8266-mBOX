@@ -3,12 +3,18 @@
 #include <ArduinoJson.h>
 #include <LiquidCrystal_PCF8574.h>
 #include <Keypad.h>
-#include <Math.h>
+extern "C" {
+  #include "user_interface.h"
+  #include "wpa2_enterprise.h"
+}
 
 LiquidCrystal_PCF8574 lcd(0x27);
 
-const char* SSID     = "Buzzghetti";
-const char* PASSWORD = "spaghetti";
+bool WP2Enterprise = true;
+static const char* ssid     = "ssid";
+static const char* username = "username";
+static const char* password = "password";
+
 const String URL     = "http://mbox-backend.herokuapp.com/api/";
 
 const byte ROWS = 4;
@@ -22,6 +28,11 @@ char hexaKeys[ROWS][COLS] = {
   {'*','0','#','D'}
 };
 Keypad kpad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS);
+
+int refreshTime = 600;
+int scrollTime = 300;
+int timeOffset = 100;
+int selectedMenuOption = 0;
 
 void setup() {
   lcd.begin(16, 2);
@@ -39,9 +50,6 @@ void loadProgram(String menuItem) {
   char pressedKey;
   String key;
   unsigned long startTime;
-  int refreshTime = 600;
-  int scrollTime = 300;
-  int timeOffset = 100;
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Loading...");
@@ -140,7 +148,6 @@ void loadProgram(String menuItem) {
 
 String getMenuOption() {
   char pressedKey;
-  int selectedMenuOption = 0;
 
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -224,16 +231,35 @@ void connect() {
   lcd.setCursor(0, 0);
   lcd.print("Connecting to");
   lcd.setCursor(0, 1);
-  lcd.print(SSID);
+  lcd.print(ssid);
   
-  WiFi.begin(SSID, PASSWORD);
-
+  if (WP2Enterprise) {
+    wifi_set_opmode(STATION_MODE);
+  
+    struct station_config wifi_config;
+  
+    memset(&wifi_config, 0, sizeof(wifi_config));
+    strcpy((char*)wifi_config.ssid, ssid);
+  
+    wifi_station_set_config(&wifi_config);
+  
+    wifi_station_clear_cert_key();
+    wifi_station_clear_enterprise_ca_cert();
+  
+    wifi_station_set_wpa2_enterprise_auth(1);
+    wifi_station_set_enterprise_username((uint8*)username, strlen(username));
+    wifi_station_set_enterprise_password((uint8*)password, strlen(password));
+  
+    wifi_station_connect();
+  } else {    
+    WiFi.begin(ssid, password);
+  }  
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     lcd.print('.');
   }
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Connected");
+  lcd.print("Connected"); 
 }
 
