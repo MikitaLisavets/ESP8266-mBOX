@@ -3,19 +3,15 @@
 #include <ArduinoJson.h>
 #include <LiquidCrystal_PCF8574.h>
 #include <Keypad.h>
-extern "C" {
-  #include "user_interface.h"
-  #include "wpa2_enterprise.h"
-}
 
 LiquidCrystal_PCF8574 lcd(0x27);
 
-bool WP2Enterprise = true;
-static const char* ssid     = "ssid";
-static const char* username = "username";
-static const char* password = "password";
+bool offline = false;
+bool out = false;
+char* ssid = "HUAWEI-G4Qp";
+char* password = "d5U5eaA5Fg";
 
-const String URL     = "http://mbox-backend.herokuapp.com/api/";
+const String URL = "http://mbox-backend.herokuapp.com/api/";
 
 const byte ROWS = 4;
 const byte COLS = 4;
@@ -33,29 +29,66 @@ int refreshTime = 600;
 int scrollTime = 300;
 int timeOffset = 100;
 int selectedMenuOption = 0;
+String queryKey;
+
+char customKey;
+double first = 0;
+double second = 0;
+double total = 0;
 
 void setup() {
+  Serial.begin(115200);
   lcd.begin(16, 2);
   lcd.setBacklight(255);
-
-  connect();
+  lcd.setCursor(0, 0);
+  lcd.print("Connect?");
+  lcd.setCursor(0, 1);
+  lcd.print("Yes(1) / No(2)");
+  char ikey;
+  int ind = 0;
+  while(ikey != '1' && ikey != '2') {
+    ikey = kpad.getKey();
+    delay(16);
+  }
+  if (ikey == '1') {
+    kpad.addEventListener(keypadEvent);
+    connect();
+  } else {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Offline (calc)");
+    offline = true;
+    delay(1000);
+    lcd.clear();
+  }
 }
 
 void loop() {
-  String menuItem = getMenuOption();
-  loadProgram(menuItem);
+  out = false;
+  queryKey = "";
+  if (!offline) {
+    String menuItem = getMenuOption();
+    loadProgram(menuItem); 
+  } else {
+    calc();
+  }
+  delay(10);
 }
 
 void loadProgram(String menuItem) {
   char pressedKey;
-  String key;
   unsigned long startTime;
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Loading...");
+  lcd.print("Fetching...");
 
   while(1) {
-    JsonObject& menu = fetch(URL + menuItem + "?key=" + key); 
+    if (out) return;
+    pressedKey = kpad.getKey();
+    JsonObject& menu = fetch(URL + menuItem + "?key=" + queryKey); 
+
+    refreshTime = menu["refreshTime"] ?  menu["refreshTime"] : refreshTime;
+    scrollTime = menu["scrollTime"] ? menu["scrollTime"] : scrollTime;
 
     String lineOne = menu["lineOne"];
     String lineTwo = menu["lineTwo"];
@@ -74,73 +107,16 @@ void loadProgram(String menuItem) {
         startTime = millis();
         while(millis() - startTime < scrollTime) {
           pressedKey = kpad.getKey();
-          if (pressedKey) {
-            switch(pressedKey) {
-              case '*':
-                return;
-            case 'A':
-              refreshTime += timeOffset;
-              lcd.setCursor(0, 0);
-              lcd.print("[+ " + String(refreshTime) + " update]");
-              break;
-            case 'B':
-              refreshTime -= timeOffset;
-              lcd.setCursor(0, 0);
-              lcd.print("[- " + String(refreshTime) + " update]");
-              break;
-            case 'C': 
-              scrollTime += timeOffset;
-              lcd.setCursor(0, 1);
-              lcd.print("[+ " + String(scrollTime) + " scroll]");
-              break;
-             case 'D':
-              scrollTime -= timeOffset;
-              lcd.setCursor(0, 1);
-              lcd.print("[- " + String(scrollTime) + " scroll]");
-              break;
-              default:
-                key = pressedKey;
-            }            
-          }
           delay(10);
         }
         lcd.scrollDisplayLeft();
         textOffset--;
       }
-      delay(scrollTime);
       lcd.home();
     }
     startTime = millis();
     while(millis() - startTime < refreshTime) {
       pressedKey = kpad.getKey();
-      if (pressedKey) {
-        switch(pressedKey) {
-          case '*':
-            return;
-          case 'A':
-            refreshTime += timeOffset;
-            lcd.setCursor(0, 0);
-            lcd.print("[+ " + String(refreshTime) + " update]");
-            break;
-          case 'B':
-            refreshTime -= timeOffset;
-            lcd.setCursor(0, 0);
-            lcd.print("[- " + String(refreshTime) + " update]");
-            break;
-          case 'C': 
-            scrollTime += timeOffset;
-            lcd.setCursor(0, 1);
-            lcd.print("[+ " + String(scrollTime) + " scroll]");
-            break;
-           case 'D':
-            scrollTime -= timeOffset;
-            lcd.setCursor(0, 1);
-            lcd.print("[- " + String(scrollTime) + " scroll]");
-            break;
-          default:
-            key = pressedKey;
-        }                
-      }
       delay(10);
     }
   }
@@ -151,34 +127,36 @@ String getMenuOption() {
 
   lcd.clear();
   lcd.setCursor(0, 0);
-  lcd.print("Loading...");
+  lcd.print("Loading menu...");
 
   JsonObject& menu = fetch(URL + "menu"); 
   const int length = menu["length"];
-  
+
+  lcd.clear();
   while(pressedKey != '5') {
     pressedKey = kpad.getKey();
     
     if (pressedKey == '2') {
+      lcd.clear();
       selectedMenuOption -= 1;
       if (selectedMenuOption < 0) {
         selectedMenuOption = length + selectedMenuOption;
       }
     }
     if (pressedKey == '8') {
+      lcd.clear();
       selectedMenuOption += 1;
       selectedMenuOption %= length;
     }
 
-   String menuItem = menu[String(selectedMenuOption)];
+    String menuItem = menu[String(selectedMenuOption)];
 
-    lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("[" + String(selectedMenuOption + 1) + "] "); 
     lcd.print(menuItem); 
     lcd.setCursor(0, 1);
     lcd.print("Up / Down");
-    delay(100);
+    delay(200);
   }
 
   return menu[String(selectedMenuOption)];
@@ -232,34 +210,134 @@ void connect() {
   lcd.print("Connecting to");
   lcd.setCursor(0, 1);
   lcd.print(ssid);
-  
-  if (WP2Enterprise) {
-    wifi_set_opmode(STATION_MODE);
-  
-    struct station_config wifi_config;
-  
-    memset(&wifi_config, 0, sizeof(wifi_config));
-    strcpy((char*)wifi_config.ssid, ssid);
-  
-    wifi_station_set_config(&wifi_config);
-  
-    wifi_station_clear_cert_key();
-    wifi_station_clear_enterprise_ca_cert();
-  
-    wifi_station_set_wpa2_enterprise_auth(1);
-    wifi_station_set_enterprise_username((uint8*)username, strlen(username));
-    wifi_station_set_enterprise_password((uint8*)password, strlen(password));
-  
-    wifi_station_connect();
-  } else {    
-    WiFi.begin(ssid, password);
-  }  
+    
+  WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     lcd.print('.');
   }
+  
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Connected"); 
 }
 
+void keypadEvent(KeypadEvent key){
+  switch (kpad.getState()){
+    case PRESSED:
+      switch(key) {
+        case '*':
+          out = true;
+          break;
+        case 'A':
+          refreshTime += timeOffset;
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("[+ " + String(refreshTime) + " update]");
+          break;
+        case 'B':
+          refreshTime -= timeOffset;
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("[- " + String(refreshTime) + " update]");
+          break;
+        case 'C': 
+          scrollTime += timeOffset;
+          lcd.clear();
+          lcd.setCursor(0, 1);
+          lcd.print("[+ " + String(scrollTime) + " scroll]");
+          break;
+         case 'D':
+          scrollTime -= timeOffset;
+          lcd.clear();
+          lcd.setCursor(0, 1);
+          lcd.print("[- " + String(scrollTime) + " scroll]");
+          break;
+        default:
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("mode: [" + String(key) + "]");
+          queryKey = key;
+      }  
+      break;
+    case RELEASED:
+      break;
+    case HOLD:
+      break;
+  }
+}
+
+void calc() {
+  customKey = kpad.getKey();
+  switch(customKey) {
+    case '0' ... '9':
+      lcd.setCursor(0,0);
+      first = first * 10 + (customKey - '0');
+      lcd.print(first);
+      break;
+    case 'A':
+      first = (total != 0 ? total : first);
+      lcd.setCursor(0,1);
+      lcd.print("+");
+      second = SecondNumber(); // get the collected the second number
+      total = first + second;
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print(total);
+      first = total, second = 0; // reset values back to zero for next use
+      break;
+    case 'B':
+      first = (total != 0 ? total : first);
+      lcd.setCursor(0,1);
+      lcd.print("-");
+      second = SecondNumber();
+      total = first - second;
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print(total);
+      first = total, second = 0;
+      break;
+    case 'C':
+      first = (total != 0 ? total : first);
+      lcd.setCursor(0,1);
+      lcd.print("*");
+      second = SecondNumber();
+      total = first * second;
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print(total);
+      first = total, second = 0;
+      break;
+    case 'D':
+      first = (total != 0 ? total : first);
+      lcd.setCursor(0,1);
+      lcd.print("/");
+      second = SecondNumber();
+      lcd.clear();
+      lcd.setCursor(0,0);
+      second == 0 ? lcd.print("Invalid") : total = (float)first / (float)second;
+      lcd.print(total);
+      first = total, second = 0;
+      break;
+    case '*':
+      total = 0;
+      first = 0,
+      second = 0;
+      lcd.clear();
+      break;
+  }
+}
+
+long SecondNumber() {
+  while(1) {
+    customKey = kpad.getKey();
+    if(customKey >= '0' && customKey <= '9') {
+      second = second * 10 + (customKey - '0');
+      lcd.setCursor(0,2);
+      lcd.print(second);
+    }
+    if(customKey == '#') break;
+    delay(10);
+  }
+ return second; 
+}
